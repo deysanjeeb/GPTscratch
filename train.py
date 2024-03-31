@@ -8,9 +8,24 @@ vocab_size =len(chars)
 print(''.join(chars))
 print(vocab_size)
 
-stoi = {ch:i for i,ch in enumerate(chars)}
-itos = {i:ch for i,ch in enumerate(chars)}
+stoi = {ch:i for i,ch in enumerate(chars)}  # char to index mapping
+itos = {i:ch for i,ch in enumerate(chars)}  # index to char mapping
 encode = lambda s: [stoi[c] for c in s]
 decode = lambda l: ''.join([itos[i] for i in l])
 
+# tensor array with encoded values
 data = torch.tensor(encode(text), dtype=torch.long)
+
+n = int(0.9*len(data))
+train_data = data[:n]
+test_data = data[n:]
+
+block_size = 8
+train_data[:block_size+1]
+
+x = train_data[:block_size]
+y = train_data[1:block_size+1]
+for t in range(block_size):
+    context = x[:t+1]
+    target = y[t]
+    print(f"when input is {context} the target: {target}")
