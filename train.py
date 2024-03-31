@@ -1,6 +1,18 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+
+
+batch_size = 32
+block_size = 8
+max_iters = 3000
+eval_interval = 300
+learning_rate = 1e-2
+eval_iters = 200
+torch.manual_seed(1337)
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+
 with open('input.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
@@ -16,24 +28,9 @@ decode = lambda l: ''.join([itos[i] for i in l])
 
 # tensor array with encoded values
 data = torch.tensor(encode(text), dtype=torch.long)
-
 n = int(0.9*len(data))
 train_data = data[:n]
 test_data = data[n:]
-
-block_size = 8
-train_data[:block_size+1]
-
-x = train_data[:block_size]
-y = train_data[1:block_size+1]
-for t in range(block_size):
-    context = x[:t+1]
-    target = y[t]
-    print(f"when input is {context} the target: {target}")
-
-torch.manual_seed(1337)
-batch_size = 4
-block_size = 8
 
 
 def get_batch(split):
@@ -96,8 +93,7 @@ print(decode(m.generate(idx=torch.zeros((1, 1), dtype=torch.long), max_new_token
 #creating optimizer
 optimizer = torch.optim.AdamW(m.parameters(), lr=1e-3)
 
-batch_size = 32
-for steps in range(100):
+for steps in range(1000):
     xb, yb = get_batch('train')
 
     logits, loss = m(xb,yb)
@@ -105,4 +101,6 @@ for steps in range(100):
     loss.backward()
     optimizer.step()
 
-    print(loss.item())
+print(loss.item())
+
+print(decode(m.generate(idx=torch.zeros((1, 1), dtype=torch.long), max_new_tokens=500)[0].tolist()))
