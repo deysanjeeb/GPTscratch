@@ -11,6 +11,7 @@ learning_rate = 1e-2
 eval_iters = 200
 torch.manual_seed(1337)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+n_embd = 32
 
 
 with open('input.txt', 'r', encoding='utf-8') as f:
@@ -38,10 +39,10 @@ def get_batch(split):
     ix = torch.randint(len(data) - block_size, (batch_size,))
     x = torch.stack([data[i:i+block_size] for i in ix])
     y = torch.stack([data[i+1:i+block_size+1] for i in ix])
-    x, y = x.to(device, y.to(device))
+    x, y = x.to(device), y.to(device)
     return x, y
     
-@torch.no_grad
+@torch.no_grad # since no back propogation, not storing intermediate values  
 def estimate_loss():
     out ={}
     model.eval()
@@ -76,10 +77,12 @@ class BigramLanguageModel(nn.Module):
 
     def __init__(self, vocab_size):
         super().__init__()
-        self.token_embedding_table = nn.Embedding(vocab_size, vocab_size)
+        self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
+        self.lm_head = nn.Linear(n_embd, vocab_size)
     
     def forward(self, idx, targets=None):
-        logits = self.token_embedding_table(idx)
+        tok_emb = self.token_embedding_table(idx)
+        logits = self.lm_head(tok_emb)
         if targets is None:
             loss = None
         else:
@@ -120,3 +123,22 @@ print(loss.item())
 
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+
+#storing prev history using weigthed sum then averages
+B, T, C = 4,8,2
+x = torch.randn(B,T,C)
+xbow = torch.zeros((B,T,c))
+for b in range(B):
+    for t in range(T):
+        xprev = x[b, :t+1]
+        xbow[b,t] = torch.mean(xprev, 0)
+
+wei = torch.tril(torch.ones(T,T))
+wei = wei / wei.sum(1, keepdim=True)
+xbow2 = wei @ x
+
+wei torch,zeros((T,T))
+trill = torch.tril(torch.ones(T,T))
+wei = wei.masked_fill(tril == 0, float('-inf'))
+wei = F.softmax(wei, dim=-1)
+xbow3 = wei @ x
