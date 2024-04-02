@@ -78,11 +78,17 @@ class BigramLanguageModel(nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
+        self.position_embedding_table = nn.Embedding(block_size, n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size)
     
     def forward(self, idx, targets=None):
+        B,T = idx.shape
+        
         tok_emb = self.token_embedding_table(idx)
-        logits = self.lm_head(tok_emb)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=device))
+        x = tok_emb + pos_emb
+        logits = self.lm_head(x)
+
         if targets is None:
             loss = None
         else:
@@ -94,7 +100,7 @@ class BigramLanguageModel(nn.Module):
     
     def generate(self, idx, max_new_tokens):
         for _ in range(max_new_tokens):
-            logits, loss =self(idx)
+            logits, loss = self(idx)
             logits = logits[:, -1, :]
             probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
@@ -122,23 +128,35 @@ for iter in range(max_iters):
 print(loss.item())
 
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+# print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
 
 #storing prev history using weigthed sum then averages
-B, T, C = 4,8,2
+B, T, C = 4,8,32
 x = torch.randn(B,T,C)
-xbow = torch.zeros((B,T,c))
-for b in range(B):
-    for t in range(T):
-        xprev = x[b, :t+1]
-        xbow[b,t] = torch.mean(xprev, 0)
+# xbow = torch.zeros((B,T,C))
+# for b in range(B):
+#     for t in range(T):
+#         xprev = x[b, :t+1]
+#         xbow[b,t] = torch.mean(xprev, 0)
 
-wei = torch.tril(torch.ones(T,T))
-wei = wei / wei.sum(1, keepdim=True)
-xbow2 = wei @ x
+# wei = torch.tril(torch.ones(T,T))
+# wei = wei / wei.sum(1, keepdim=True)
+# xbow2 = wei @ x
 
-wei torch,zeros((T,T))
+head_size = 16
+key = nn.Linear(C, head_size, bias=False)
+query = nn.Linear(C, head_size, bias=False)
+value = nn.Linear(C, head_size, bias=False)
+k = key(x)
+q = query(x)
+wei = q @ k.transpose(-2, -1)
+
+
+# wei = torch.zeros((T,T))
 trill = torch.tril(torch.ones(T,T))
-wei = wei.masked_fill(tril == 0, float('-inf'))
+wei = wei.masked_fill(trill == 0, float('-inf'))
 wei = F.softmax(wei, dim=-1)
-xbow3 = wei @ x
+# out = wei @ x
+v = value(x)
+out = wei @ v
+print(wei[0])
