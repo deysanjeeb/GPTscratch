@@ -87,6 +87,7 @@ class Head(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
     
+
     def forward(self, x):
         B,T,C = x.shape
         k = self.key(x)
@@ -105,11 +106,13 @@ class Head(nn.Module):
 
 class MultiHeadAttention(nn.Module):
 
+
     def __init__(self, num_heads, head_size):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         self.proj = nn.Linear(n_embd, n_embd)
         self.dropout = nn.Dropout(dropout)
+
 
     def forward(self, x):
         out =  torch.cat([h(x) for h in self.heads], dim=-1)
@@ -118,6 +121,8 @@ class MultiHeadAttention(nn.Module):
 
 
 class FeedForward(nn.Module):
+
+
     def __init__(self, n_embd):
         super().__init__()
         self.net = nn.Sequential(
@@ -126,6 +131,7 @@ class FeedForward(nn.Module):
             nn.Linear(4 * n_embd, n_embd),
             nn.Dropout(dropout)
         )
+
 
     def forward(self, x):
         return self.net(x)
@@ -158,6 +164,7 @@ class BigramLanguageModel(nn.Module):
         self.ln_f = nn.LayerNorm(n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size)
     
+
     def forward(self, idx, targets=None):
         B,T = idx.shape
         
@@ -177,6 +184,7 @@ class BigramLanguageModel(nn.Module):
             loss = F.cross_entropy(logits, targets)
         return logits , loss
     
+
     def generate(self, idx, max_new_tokens):
         for _ in range(max_new_tokens):
             idx_cond  = idx[:, -block_size]
@@ -213,22 +221,3 @@ context = torch.zeros((1, 1), dtype=torch.long, device=device)
 #storing prev history using weigthed sum then averages
 B, T, C = 4,8,32
 x = torch.randn(B,T,C)
-# xbow = torch.zeros((B,T,C))
-# for b in range(B):
-#     for t in range(T):
-#         xprev = x[b, :t+1]
-#         xbow[b,t] = torch.mean(xprev, 0)
-
-# wei = torch.tril(torch.ones(T,T))
-# wei = wei / wei.sum(1, keepdim=True)
-# xbow2 = wei @ x
-
-# head_size = 16
-# key = nn.Linear(C, head_size, bias=False)
-# query = nn.Linear(C, head_size, bias=False)
-# value = nn.Linear(C, head_size, bias=False)
-# k = key(x)
-# q = query(x)
-
-
-# wei = torch.zeros((T,T))
